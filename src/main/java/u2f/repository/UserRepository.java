@@ -1,7 +1,10 @@
 package u2f.repository;
 
-/**
- * Created by Ewa on 4/24/2017.
- */
-public class UserRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import u2f.model.User;
+
+@Repository("userRepository")
+public interface UserRepository extends JpaRepository<User, Long> {
+    User findByUsername(String username);
 }
