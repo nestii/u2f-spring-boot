@@ -51,22 +51,37 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 //                .authorizeRequests()
 //                .antMatchers("/console/**").permitAll();
 
-//         http
-//                .authorizeRequests()
-//                    .antMatchers("/resources/**").permitAll().anyRequest().permitAll()
-//                    .antMatchers("/registration").permitAll()
-//                    .antMatchers("/registration-u2f").permitAll()
-//                    .antMatchers("/authenticate").permitAll()
-//                    .antMatchers("/success").permitAll()
-////                    .anyRequest().authenticated()
-//                    .and()
-//                .authorizeRequests()
-//                .antMatchers("/console/**").permitAll();
-        http.authorizeRequests().antMatchers("/").permitAll().and().csrf().disable();
-         http.csrf().disable();
+        http
+                .authorizeRequests()
+                .antMatchers("/resources/**").permitAll()
+                .antMatchers("/registration").permitAll()
+                .antMatchers("/registration-u2f").permitAll()
+                .antMatchers("/default").permitAll()
+                .antMatchers("/authenticate").hasRole("USER")
+                .antMatchers("/success").hasRole("USER")
+                .anyRequest().authenticated()
+                .and()
+                .authorizeRequests()
+                .antMatchers("/console/**").permitAll()
+                .and()
+                .formLogin() 
+                .usernameParameter("username")
+                .passwordParameter("password")
+                .defaultSuccessUrl("/authenticate")
+                .loginPage("/login") // #9
+                .permitAll();
+//        http.authorizeRequests().antMatchers("/").permitAll().and().csrf().disable();
+        http.csrf().disable();
+        http.authorizeRequests().antMatchers("/resources/**").permitAll().anyRequest().permitAll();
 
     }
 
+//    @Override
+//    public void configure(WebSecurity web) throws Exception {
+//       web
+//      .ignoring()
+//         .antMatchers("/resources/**"); // #3
+//    }
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
         auth.userDetailsService(userDetailsService).passwordEncoder(bCryptPasswordEncoder());

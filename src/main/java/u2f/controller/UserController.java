@@ -13,8 +13,11 @@ import com.yubico.u2f.data.messages.RegisterRequestData;
 import com.yubico.u2f.data.messages.RegisterResponse;
 import com.yubico.u2f.exceptions.DeviceCompromisedException;
 import com.yubico.u2f.exceptions.NoEligableDevicesException;
+import java.security.Principal;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -64,6 +67,7 @@ public class UserController {
         RegisterRequestData registerRequestData = u2f.startRegistration(APP_ID, getRegistrations(userForm.getUsername()));
         requestStorage.save(registerRequestData);
         userForm.setRegisterRequestData(registerRequestData.toJson());
+//        userForm.setRole(Role.PRE_AUTH);
         userService.save(userForm);
 
         model.addAttribute("data", registerRequestData.toJson());
@@ -73,8 +77,9 @@ public class UserController {
     }
 
     @RequestMapping(value = "/registration-u2f")
-    public String registrationU2F(@ModelAttribute("usernameAttr") String username, Model model) {
+    public String registrationU2F(@ModelAttribute("usernameAttr") String username, Principal p, Model model) {
         User u = userRepository.findByUsername(username);
+
         model.addAttribute("data", u.getRegisterRequestData());
         return "registration-u2f";
     }
@@ -86,13 +91,32 @@ public class UserController {
         DeviceRegistration registration = u2f.finishRegistration(registerRequestData, registerResponse);
         devices.saveRegistrationForUsername(registration, username);
 
-        return "redirect:/authenticate";
+        return "redirect:/login";
     }
 
+    @RequestMapping("/login")
+    public String login(Principal p) {
+        return "login";
+    }
+    
+    @RequestMapping("/default")
+    public String aa(Principal p) {
+        if (p != null) {
+            return "redirect:/authenticate";
+        }
+        return "login";
+    }
+
+//    @RequestMapping(value = {"/login"}, method = RequestMethod.POST)
+//    public String loginAction(Model model) {
+//        return "redirect:/authenticate";
+//    }
     @RequestMapping("/authenticate")
-    public String authenticateForm(@ModelAttribute("usernameAttr") String username, Model model) throws NoEligableDevicesException {
+    public String authenticateForm(@ModelAttribute("usernameAttr") String username, Principal principal, Model model) throws NoEligableDevicesException {
         // Generate a challenge for each U2F device that this user has
         // registered
+//        String u = principal.getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         AuthenticateRequestData requestData = u2f.startAuthentication(APP_ID, getRegistrations(username));
 
         // Store the challenges for future reference
@@ -107,7 +131,7 @@ public class UserController {
     public String authenticate(@ModelAttribute("usernameAttr") String username, @RequestParam String tokenResponse)
             throws DeviceCompromisedException {
         AuthenticateResponse response = AuthenticateResponse.fromJson(tokenResponse);
-
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         // Get the challenges that we stored when starting the authentication
         AuthenticateRequestData authenticateRequest = requestStorage.delete(response.getRequestId());
 
@@ -115,12 +139,12 @@ public class UserController {
         // devices
         u2f.finishAuthentication(authenticateRequest, response, getRegistrations(username));
 
-        return "success";
+        return "redirect:/success";
     }
 
-    @RequestMapping(value = {"/welcome"}, method = RequestMethod.GET)
+    @RequestMapping(value = {"/success"}, method = RequestMethod.GET)
     public String welcome(Model model) {
-        return "welcome";
+        return "success";
     }
 
     private List<DeviceRegistration> getRegistrations(String username) {
