@@ -27,7 +27,7 @@ public class RegisterData {
     @Column(nullable = false)
     private String requestId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length=1000)
     private RegisterRequestData registerRequestData;
 
     public Long getId() {

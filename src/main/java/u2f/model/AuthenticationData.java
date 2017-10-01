@@ -28,7 +28,7 @@ public class AuthenticationData {
     @Column(nullable = false)
     private String requestId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length=1000)
     private AuthenticateRequestData authenticateRequestData;
 
     public Long getId() {

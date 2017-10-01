@@ -26,9 +26,10 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.SessionAttributes;
 import u2f.InMemoryDeviceRegistration;
-import u2f.InMemoryRequestStorage;
 import u2f.model.User;
 import u2f.repository.UserRepository;
+import u2f.service.AuthenticationDataService;
+import u2f.service.RegisterDataService;
 import u2f.service.UserService;
 
 /**
@@ -43,15 +44,18 @@ public class UserController {
     private UserService userService;
     
     @Autowired
+    private RegisterDataService registerDataService;
+    
+    @Autowired
+    private AuthenticationDataService authenticationDataService;
+    
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
     U2F u2f;
 
     private static final String APP_ID = "https://localhost:8080";
-
-    @Autowired
-    InMemoryRequestStorage requestStorage;
 
     @Autowired
     InMemoryDeviceRegistration devices;
@@ -64,7 +68,7 @@ public class UserController {
     @RequestMapping(value = "/registration", method = RequestMethod.POST)
     public String registration(@ModelAttribute("userForm") User userForm, BindingResult bindingResult, Model model) {
         RegisterRequestData registerRequestData = u2f.startRegistration(APP_ID, getRegistrations(userForm.getUsername()));
-        requestStorage.save(registerRequestData);
+        registerDataService.save(registerRequestData);
         userForm.setRegisterRequestData(registerRequestData.toJson());
         userService.save(userForm);
 
@@ -84,7 +88,7 @@ public class UserController {
     @RequestMapping(value = "/registration-u2f", method = RequestMethod.POST)
     public String registrationU2F(@ModelAttribute("usernameAttr") String username, @RequestParam("tokenResponse") String response, BindingResult bindingResult, Model model) {
         RegisterResponse registerResponse = RegisterResponse.fromJson(response);
-        RegisterRequestData registerRequestData = requestStorage.deleteRegistration(registerResponse.getRequestId());
+        RegisterRequestData registerRequestData = registerDataService.delete(registerResponse.getRequestId());
         DeviceRegistration registration = u2f.finishRegistration(registerRequestData, registerResponse);
         devices.saveRegistrationForUsername(registration, username);
 
@@ -109,7 +113,7 @@ public class UserController {
         AuthenticateRequestData requestData = u2f.startAuthentication(APP_ID, getRegistrations(principal.getName()));
 
         // Store the challenges for future reference
-        requestStorage.save(requestData);
+        authenticationDataService.save(requestData);
 
         // Return an HTML page containing the challenges
         model.addAttribute("data", requestData.toJson());
@@ -122,7 +126,7 @@ public class UserController {
         AuthenticateResponse response = AuthenticateResponse.fromJson(tokenResponse);
 
         // Get the challenges that we stored when starting the authentication
-        AuthenticateRequestData authenticateRequest = requestStorage.delete(response.getRequestId());
+        AuthenticateRequestData authenticateRequest = authenticationDataService.delete(response.getRequestId());
 
         // Verify the that the given response is valid for one of the registered
         // devices
