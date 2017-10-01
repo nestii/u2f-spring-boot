@@ -92,7 +92,7 @@ public class UserController {
     }
 
     @RequestMapping("/login")
-    public String login(Model model, @RequestParam(value = "logout", required = false) String logout) {
+    public String login(Model model, @RequestParam(value = "logout", required = false) String logout, Principal p) {
         boolean isLoggedOut = logout != null;
         model.addAttribute("isLoggedOut", isLoggedOut);
         return "login";
@@ -104,9 +104,9 @@ public class UserController {
     }
 
     @RequestMapping("/authenticate")
-    public String authenticateForm(@ModelAttribute("usernameAttr") String username, Model model) throws U2fBadInputException, NoEligibleDevicesException {
+    public String authenticateForm(Model model, Principal principal) throws U2fBadInputException, NoEligibleDevicesException {
         // Generate a challenge for each U2F device that this user has registered
-        AuthenticateRequestData requestData = u2f.startAuthentication(APP_ID, getRegistrations(username));
+        AuthenticateRequestData requestData = u2f.startAuthentication(APP_ID, getRegistrations(principal.getName()));
 
         // Store the challenges for future reference
         requestStorage.save(requestData);
@@ -117,7 +117,7 @@ public class UserController {
     }
 
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
-    public String authenticate(@ModelAttribute("usernameAttr") String username, @RequestParam String tokenResponse)
+    public String authenticate(Principal principal, @RequestParam String tokenResponse)
             throws DeviceCompromisedException {
         AuthenticateResponse response = AuthenticateResponse.fromJson(tokenResponse);
 
@@ -126,7 +126,7 @@ public class UserController {
 
         // Verify the that the given response is valid for one of the registered
         // devices
-        u2f.finishAuthentication(authenticateRequest, response, getRegistrations(username));
+        u2f.finishAuthentication(authenticateRequest, response, getRegistrations(principal.getName()));
 
         return "redirect:/success";
     }
