@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package u2f.controller;
 
 import com.yubico.u2f.U2F;
@@ -12,12 +7,16 @@ import com.yubico.u2f.data.messages.AuthenticateResponse;
 import com.yubico.u2f.data.messages.RegisterRequestData;
 import com.yubico.u2f.data.messages.RegisterResponse;
 import com.yubico.u2f.exceptions.DeviceCompromisedException;
-import com.yubico.u2f.exceptions.NoEligableDevicesException;
+import com.yubico.u2f.exceptions.NoEligibleDevicesException;
+import com.yubico.u2f.exceptions.U2fBadInputException;
 import java.security.Principal;
 import java.util.List;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -67,7 +66,6 @@ public class UserController {
         RegisterRequestData registerRequestData = u2f.startRegistration(APP_ID, getRegistrations(userForm.getUsername()));
         requestStorage.save(registerRequestData);
         userForm.setRegisterRequestData(registerRequestData.toJson());
-//        userForm.setRole(Role.PRE_AUTH);
         userService.save(userForm);
 
         model.addAttribute("data", registerRequestData.toJson());
@@ -77,10 +75,9 @@ public class UserController {
     }
 
     @RequestMapping(value = "/registration-u2f")
-    public String registrationU2F(@ModelAttribute("usernameAttr") String username, Principal p, Model model) {
-        User u = userRepository.findByUsername(username);
-
-        model.addAttribute("data", u.getRegisterRequestData());
+    public String registrationU2F(@ModelAttribute("usernameAttr") String username, Model model) {
+        User user = userRepository.findByUsername(username);
+        model.addAttribute("data", user.getRegisterRequestData());
         return "registration-u2f";
     }
 
@@ -91,32 +88,24 @@ public class UserController {
         DeviceRegistration registration = u2f.finishRegistration(registerRequestData, registerResponse);
         devices.saveRegistrationForUsername(registration, username);
 
-        return "redirect:/login";
+        return "redirect:/registration-success";
     }
 
     @RequestMapping("/login")
-    public String login(Principal p) {
-        return "login";
-    }
-    
-    @RequestMapping("/default")
-    public String aa(Principal p) {
-        if (p != null) {
-            return "redirect:/authenticate";
-        }
+    public String login(Model model, @RequestParam(value = "logout", required = false) String logout) {
+        boolean isLoggedOut = logout != null;
+        model.addAttribute("isLoggedOut", isLoggedOut);
         return "login";
     }
 
-//    @RequestMapping(value = {"/login"}, method = RequestMethod.POST)
-//    public String loginAction(Model model) {
-//        return "redirect:/authenticate";
-//    }
+    @RequestMapping("/registration-success")
+    public String registrationSuccess(Principal p) {
+        return "registration-success";
+    }
+
     @RequestMapping("/authenticate")
-    public String authenticateForm(@ModelAttribute("usernameAttr") String username, Principal principal, Model model) throws NoEligableDevicesException {
-        // Generate a challenge for each U2F device that this user has
-        // registered
-//        String u = principal.getName();
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    public String authenticateForm(@ModelAttribute("usernameAttr") String username, Model model) throws U2fBadInputException, NoEligibleDevicesException {
+        // Generate a challenge for each U2F device that this user has registered
         AuthenticateRequestData requestData = u2f.startAuthentication(APP_ID, getRegistrations(username));
 
         // Store the challenges for future reference
@@ -131,7 +120,7 @@ public class UserController {
     public String authenticate(@ModelAttribute("usernameAttr") String username, @RequestParam String tokenResponse)
             throws DeviceCompromisedException {
         AuthenticateResponse response = AuthenticateResponse.fromJson(tokenResponse);
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
         // Get the challenges that we stored when starting the authentication
         AuthenticateRequestData authenticateRequest = requestStorage.delete(response.getRequestId());
 
@@ -143,8 +132,18 @@ public class UserController {
     }
 
     @RequestMapping(value = {"/success"}, method = RequestMethod.GET)
-    public String welcome(Model model) {
+    public String welcome(Model model, Principal principal) {
+        model.addAttribute("username", principal.getName());
         return "success";
+    }
+
+    @RequestMapping(value = "/logout", method = RequestMethod.GET)
+    public String logoutPage(HttpServletRequest request, HttpServletResponse response) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            new SecurityContextLogoutHandler().logout(request, response, auth);
+        }
+        return "redirect:/login?logout";
     }
 
     private List<DeviceRegistration> getRegistrations(String username) {

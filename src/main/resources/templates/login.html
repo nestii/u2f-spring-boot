@@ -2,16 +2,43 @@
 <html xmlns:th="http://www.thymeleaf.org">
   <head>
     <title>Login page</title>
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+              rel="stylesheet"/>
   </head>
-  <body>
-    <h1>Login page</h1>
-    <p th:if="${loginError}" class="error">Wrong user or password</p>
-    <form th:action="@{/login}" method="post">
-      <label for="username">Username</label>:
-      <input type="text" id="username" name="username" autofocus="autofocus" /> <br />
-      <label for="password">Password</label>:
-      <input type="password" id="password" name="password" /> <br />
-      <input type="submit" value="Log in" />
-    </form>
-  </body>
+    <body class="gray-bg">
+        <div class="jumbotron">
+            <div class="container">
+                <div class="row">
+                    <div class="col-sm-6 col-md-4 col-md-offset-4">
+                        <h4 style="text-align: center;">Login</h4>
+                        <form th:action="@{/login}" method="post" class="form-signin">
+                            <div th:if="${isLoggedOut}" class="alert alert-success" role="alert" style="text-align: center">
+                                You have been successfully logged out.
+                            </div> 
+                            <div class="form-group input-group">
+                                <span class="input-group-addon">
+                                    <span class="glyphicon glyphicon-user"></span>
+                                </span>
+                                <input type="text"  name="username" 
+                                       placeholder="username" class="form-control" />
+                            </div>
+
+                            <div class="form-group input-group">
+                                <span class="input-group-addon">
+                                    <span class="glyphicon glyphicon-lock"></span>
+                                </span>
+
+                                <input type="password" name="password" 
+                                       placeholder="password" class="form-control" />
+                            </div>
+                            <div class="form-group">
+                                 <button type="submit"
+                                    class="btn btn-primary" style="width: 100%">Login</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
 </html>

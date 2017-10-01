@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package u2f.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +30,15 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findByUsername(String username) {
         return userRepository.findByUsername(username);
+    }
+
+    @Override
+    public void update(User user) {
+        User existingUser = userRepository.findByUsername(user.getUsername());
+        if (existingUser != null) {
+            user.setId(existingUser.getId());
+            userRepository.save(user);
+        }
     }
     
 }
