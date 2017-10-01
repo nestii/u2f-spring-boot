@@ -33,7 +33,6 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/resources/**").permitAll()
                 .antMatchers("/registration").permitAll()
                 .antMatchers("/registration-u2f").permitAll()
-                .antMatchers("/header").permitAll()
                 .antMatchers("/registration-success").permitAll()
                 .antMatchers("/authenticate").hasRole("USER")
                 .antMatchers("/success").hasRole("USER")
